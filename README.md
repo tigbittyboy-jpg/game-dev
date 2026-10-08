@@ -102,11 +102,15 @@ The game must be served with the command above; double-clicking `index.html` wil
 
 ### Character behavior
 
-Characters wander around the chamber with alternating foot placement, bent knees, counter-swinging arms, breathing, and blinking. Nearby gunfire causes them to turn and flee. Hits or grabbing release them into connected physics bodies. Light injuries use foot-grounded balance assistance so subjects stagger and guard while staying upright; substantial leg injury, low vitality, loss of footing, or grabbing disables that support. The neck has a hard angular limit even after incapacitation. Surviving characters continue guarded arm movement, curling, head movement, and asymmetric leg reactions. Lightly injured characters that keep their footing can resume moving and retreat with a guarded gait; they no longer stop moving when a short reaction timer expires. Repeated hits restart the immediate flinch, reduce vitality, and weaken the affected limb. An unresponsive character stops voluntary movement but remains collidable, grabbable, and responsive to external impacts.
+Characters wander with alternating steps, bent knees, counter-swinging arms, breathing, and blinking. Foot swing, stride changes, and turning ease into motion. Animation follows the physical joint anchors so a hit does not need to correct stretched joints. Nearby gunfire causes subjects to turn and flee.
+
+Hits and grabbing switch the character into connected dynamic bodies. Lightly injured subjects stagger, guard, and can resume moving with a guarded gait. Impacts preserve the current leg angles rather than forcing them straight. Softer balance support eases in only while a boot is near the floor, and reduced gun impulses curb exaggerated launches. Substantial leg injury, low vitality, loss of footing, or grabbing disables standing support. Repeated hits restart the flinch, reduce vitality, and weaken the affected limb. The neck retains its hard angular limit after incapacitation.
+
+Fallen survivors wait until they settle on the floor, then brace with their arms, bring their knees under them, and stand over roughly 3.3 seconds. Subjects with injured legs or very low vitality instead crawl away with alternating arm reaches and trailing legs. Hits and grabs interrupt getting up or crawling and return the body to dynamic physics. Held, airborne, and unresponsive subjects cannot start recovery. An unresponsive character stops voluntary movement but remains collidable, grabbable, and responsive to external impacts.
 
 Wounds stay attached to the hit body part and intermittently drip for roughly 14–30 seconds, gradually slowing down. Closely spaced pellet hits merge into one wound. Blood effects include small impact marks, airborne droplets, and floor stains. The **Blood** checkbox disables new effects and clears airborne droplets; clearing subjects or resetting removes all marks and stains. There is no dismemberment.
 
-The clean gridded chamber starts with four subjects and no obstacles. It supports up to 180 spawned props and 12 subjects. The models and reactions are procedural; characters steer around other subjects and props, but do not speak or simulate an anatomically accurate medical system. Walking uses procedural animation and kinematic colliders, blended into dynamic ragdolls on impact. Mild injuries can blend back to locomotion after the initial stagger; severe injuries remain fully physical. This is not a fully physical biped walking solver.
+The clean gridded chamber starts with four subjects and no obstacles. It supports up to 180 spawned props and 12 subjects. The models and reactions are procedural; characters steer around other subjects and props, but do not speak or simulate an anatomically accurate medical system. Walking uses procedural animation and kinematic colliders, blended into dynamic ragdolls on impact. Mild injuries can blend back to locomotion after the initial stagger. Getting up and crawling use assisted procedural poses with kinematic colliders; falling, being held, impacts, and incapacitation use dynamic bodies. This is not a fully physical biped walking solver.
 
 ### 7. Stop and restart
 
@@ -160,7 +164,7 @@ The `/workspace` paths are specific to the cloud environment; use the macOS step
 npm test
 ```
 
-The physics regression tests check continued visible limb movement long after a first hit, repeated-hit wake-up and momentum, incapacitated settling, neck limits under head impacts, resistance to mild hits, grounded struggle after leg injury, self-collision, floor collisions, walking, threat avoidance, walking-to-ragdoll momentum, wound expiry, and stability with multiple injured characters. Physics runs at 120 Hz with 12 solver iterations. Bodies weigh about 53 kg. Only directly joined neighbors disable collision at their attachment points.
+The physics regression tests check continued visible limb movement long after a first hit, repeated-hit wake-up and momentum, incapacitated settling, neck limits under head impacts, resistance to mild hits, grounded struggle after leg injury, self-collision, floor collisions, walking, threat avoidance, walking-to-ragdoll momentum, connected animation anchors, upward motion after hits across gait phases, gradual ground recovery, leg-injured crawling, recovery interruptions, wound expiry, and stability with multiple injured characters. Physics runs at 120 Hz with 12 solver iterations. Bodies weigh about 53 kg. Only directly joined neighbors disable collision at their attachment points.
 
 For browser play tests:
 
@@ -169,7 +173,7 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-The cloud environment uses its existing system Chromium when available. The browser suite checks walking and foot lift, actual aiming and shooting, ongoing reactions, repeated hits, reload, pause, jump, grabbing and throwing, shotgun and baton impacts, blood controls, and reset. Failure screenshots and traces are written to ignored `test-results/`.
+The cloud environment uses its existing system Chromium when available. The browser suite checks walking and foot lift, actual aiming and shooting, ongoing reactions, repeated hits, reload, pause, jump, grabbing and throwing, shotgun and baton impacts, blood controls, reset, getting up after being dragged down, and leg-injured crawling. Failure screenshots and traces are written to ignored `test-results/`.
 
 ## Update an existing Git checkout
 

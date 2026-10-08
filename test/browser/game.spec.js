@@ -47,8 +47,26 @@ test('shotgun and close-range baton register impacts; incapacitated bodies stay 
 });
 
 test('starting subjects walk and lift their feet before any interaction',async({page})=>{
- const errors=await open(page);const start=await page.evaluate(()=>({...testCombat.people[2].torso.body.translation()}));
- await page.waitForTimeout(2200);const end=await page.evaluate(()=>({...testCombat.people[2].torso.body.translation()}));expect(Math.hypot(end.x-start.x,end.z-start.z)).toBeGreaterThan(1);
+ const errors=await open(page);const samples=[];for(let i=0;i<10;i++){samples.push(await page.evaluate(()=>({position:{...testCombat.people[2].torso.body.translation()},clock:testCombat.people[2].clock})));await page.waitForTimeout(250);}
+ const travelled=samples.slice(1).reduce((distance,s,i)=>distance+Math.hypot(s.position.x-samples[i].position.x,s.position.z-samples[i].position.z),0);
+ expect(travelled).toBeGreaterThan(.5*(samples.at(-1).clock-samples[0].clock));
  const heights=[];for(let i=0;i<10;i++){heights.push(await page.evaluate(()=>testCombat.people[2].parts.find(p=>p.spec.name==='foot1').body.translation().y));await page.waitForTimeout(100);}
  expect(Math.max(...heights)-Math.min(...heights)).toBeGreaterThan(.06);await page.screenshot({path:test.info().outputPath('walking.png')});expect(errors).toEqual([]);
+});
+
+async function knockDown(page,person){
+ await page.keyboard.press('Digit3');await approach(page,person,6);await aim(page,person,'torso',true);await expect(page.locator('#ammo')).toContainText('HOLDING');
+ await page.evaluate(()=>document.dispatchEvent(new MouseEvent('mousemove',{movementY:(1.25-testCamera.rotation.x)/.0018})));
+ await page.mouse.wheel(0,-900);await page.waitForTimeout(2200);
+ await page.evaluate(()=>document.querySelector('canvas').dispatchEvent(new PointerEvent('pointerdown',{button:0,bubbles:true})));
+ await expect(page.locator('#ammo')).toHaveText('Click to grab');
+}
+test('released fallen survivors get up; leg-injured survivors crawl and can be grabbed again',async({page})=>{
+ const errors=await open(page);await page.keyboard.press('KeyE');await page.waitForFunction(()=>testCombat.people.length===5);await knockDown(page,4);
+ await page.waitForFunction(()=>testCombat.people[4].state==='getting-up');await aim(page,4);await page.screenshot({path:test.info().outputPath('getting-up.png')});
+ await page.waitForFunction(()=>['walking','limping','fleeing'].includes(testCombat.people[4].state));expect(await page.evaluate(()=>testCombat.people[4].torso.body.translation().y)).toBeGreaterThan(1.1);
+ await page.keyboard.press('KeyX');await page.keyboard.press('KeyE');await page.keyboard.press('Digit1');await approach(page,4,5);await aim(page,4,'thigh1',true);await page.waitForFunction(()=>Math.max(testCombat.people[4].injuries.thigh1??0,testCombat.people[4].injuries['thigh-1']??0)>.15);
+ await knockDown(page,4);await page.waitForFunction(()=>testCombat.people[4].state==='crawling');await page.waitForTimeout(1300);
+ const start=await page.evaluate(()=>({...testCombat.people[4].torso.body.translation()}));await page.waitForTimeout(2500);const end=await page.evaluate(()=>({...testCombat.people[4].torso.body.translation()}));expect(Math.hypot(end.x-start.x,end.z-start.z)).toBeGreaterThan(.3);expect(end.y).toBeLessThan(.7);
+ await aim(page,4);await page.screenshot({path:test.info().outputPath('crawling.png')});await aim(page,4,'torso',true);await expect(page.locator('#ammo')).toContainText('HOLDING');expect(await page.evaluate(()=>testCombat.people[4].active)).toBe(false);expect(errors).toEqual([]);
 });

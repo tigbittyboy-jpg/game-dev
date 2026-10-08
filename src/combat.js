@@ -3,9 +3,9 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import {createRagdoll,activateRagdoll} from './ragdoll.js';
 import {registerHit,stepReaction,stepWounds} from './reactions.js';
 
-const weapons=[
- {name:'Pistol',capacity:12,cooldown:.23,reload:1.15,pellets:1,spread:.003,impulse:12,damage:.16},
- {name:'Shotgun',capacity:6,cooldown:.8,reload:1.8,pellets:8,spread:.07,impulse:2.8,damage:.035},
+export const weapons=[
+ {name:'Pistol',capacity:12,cooldown:.23,reload:1.15,pellets:1,spread:.003,impulse:3.5,damage:.16},
+ {name:'Shotgun',capacity:6,cooldown:.8,reload:1.8,pellets:8,spread:.07,impulse:.8,damage:.035},
  {name:'Grab tool',capacity:0}, {name:'Baton',capacity:0,cooldown:.55,impulse:18,damage:.08},
 ];
 export function createCombat({scene,camera,renderer,world,controls,objects,toast,isPaused}) {
@@ -118,7 +118,7 @@ export function createCombat({scene,camera,renderer,world,controls,objects,toast
  renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
  renderer.domElement.addEventListener('wheel',e=>{if(fps&&grab){e.preventDefault();e.stopImmediatePropagation();grabDistance=THREE.MathUtils.clamp(grabDistance+e.deltaY*.004,1.5,7);}}, {capture:true,passive:false});
  function step(dt){simTime+=dt;
-  for(const p of people){stepReaction(p,dt,grab?.person===p,{people,objects,player:fps?player.translation():null,threat:threat&&simTime<threat.until?threat:null});stepWounds(p,dt,bleed);}
+  for(const p of people){stepReaction(p,dt,grab?.person===p,{people,objects,gravity:world.gravity.y,player:fps?player.translation():null,threat:threat&&simTime<threat.until?threat:null});stepWounds(p,dt,bleed);}
   if(fps){const p=player.translation(),moving=document.pointerLockElement===renderer.domElement;const speed=keys.has('ShiftLeft')||keys.has('ShiftRight')?6:3.7;const v=new THREE.Vector3(moving?Number(keys.has('KeyD'))-Number(keys.has('KeyA')):0,0,moving?Number(keys.has('KeyS'))-Number(keys.has('KeyW')):0).normalize().applyAxisAngle(new THREE.Vector3(0,1,0),yaw).multiplyScalar(dt*speed);verticalVelocity=Math.max(-20,verticalVelocity+world.gravity.y*dt);controller.computeColliderMovement(playerCollider,{x:v.x,y:verticalVelocity*dt,z:v.z});const m=controller.computedMovement();grounded=controller.computedGrounded();if(grounded&&verticalVelocity<0)verticalVelocity=-.1;player.setNextKinematicTranslation({x:p.x+m.x,y:p.y+m.y,z:p.z+m.z});if(v.lengthSq())walkTime+=dt*speed;}
   if(grab){const point=camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(grabDistance).add(camera.position),pos=grab.body.translation(),v=grab.body.linvel(),mass=grab.body.mass();const impulse=new THREE.Vector3((point.x-pos.x)*16-v.x*8,(point.y-pos.y)*16-v.y*8-world.gravity.y,(point.z-pos.z)*16-v.z*8).clampLength(0,35).multiplyScalar(dt*mass);grab.body.applyImpulse(impulse,true);}
  }
@@ -130,7 +130,7 @@ export function createCombat({scene,camera,renderer,world,controls,objects,toast
   gun.rotation.set(reloadAt?-.5:recoil,weapon===3?recoil:0,weapon===3?-recoil:0);gun.position.y=-.24+(reloadAt?-.14:0)+(fps&&grounded?Math.sin(walkTime*2)*.006:0);
   ui.querySelector('#hit-marker').style.opacity=simTime<hitUntil?'1':'0';ui.querySelector('#pause-fps').textContent=isPaused()?'Resume':'Pause';
   for(const p of people)for(const o of p.parts){o.mesh.position.copy(o.body.translation());o.mesh.quaternion.copy(o.body.rotation());if(o.spec.name==='torso')o.mesh.scale.z=1+(p.vitality>0?Math.sin(simTime*(p.active?2:3.1)+p.x)*.014:0);if(o.face)for(const eye of o.face.children)eye.scale.y=p.vitality===0?.18:Math.sin(simTime*1.4+p.x)>.992?.12:1;}
-  if(fps){const p=player.translation();camera.position.set(p.x,p.y+.65,p.z);camera.rotation.set(pitch+recoil*.12,yaw,0,'YXZ');camera.updateMatrixWorld();hudClock+=dt;if(hudClock>.1){hudClock=0;const r=cast();const p=r?.target?.person;subjectUI.style.display=p?'block':'none';if(p){const health=Math.round(p.vitality*100);subjectUI.innerHTML=`<small>SUBJECT ${String(p.id).padStart(2,'0')} · ${r.target.spec.name.replace(/-?1$/,'')}</small><strong>${p.state==='unresponsive'?'Unresponsive':p.state==='idle'?'Standing':p.state==='held'?'Held':p.state==='walking'?'Walking':p.state==='fleeing'?'Fleeing':p.state==='limping'?'Injured · retreating':p.state==='staggering'?'Staggering':p.state==='guarding'?'Standing · guarding':p.state==='reacting'?'Hit reaction':'Injured · struggling'}</strong><div class="health-track"><i style="width:${health}%"></i></div><span>${health}% vitality · ${p.wounds.length} active wounds</span>`;}}}
+  if(fps){const p=player.translation();camera.position.set(p.x,p.y+.65,p.z);camera.rotation.set(pitch+recoil*.12,yaw,0,'YXZ');camera.updateMatrixWorld();hudClock+=dt;if(hudClock>.1){hudClock=0;const r=cast();const p=r?.target?.person;subjectUI.style.display=p?'block':'none';if(p){const health=Math.round(p.vitality*100);subjectUI.innerHTML=`<small>SUBJECT ${String(p.id).padStart(2,'0')} · ${r.target.spec.name.replace(/-?1$/,'')}</small><strong>${p.state==='unresponsive'?'Unresponsive':p.state==='idle'?'Standing':p.state==='held'?'Held':p.state==='walking'?'Walking':p.state==='fleeing'?'Fleeing':p.state==='getting-up'?'Getting up':p.state==='crawling'?'Injured · crawling':p.state==='limping'?'Injured · retreating':p.state==='staggering'?'Staggering':p.state==='guarding'?'Standing · guarding':p.state==='reacting'?'Hit reaction':'Injured · struggling'}</strong><div class="health-track"><i style="width:${health}%"></i></div><span>${health}% vitality · ${p.wounds.length} active wounds</span>`;}}}
   for(let i=effects.length-1;i>=0;i--){const e=effects[i];if(!isPaused()){e.life-=dt;e.vel.y+=world.gravity.y*dt;e.mesh.position.addScaledVector(e.vel,dt);}if(e.life<=0||e.mesh.position.y<=.025){if(blood&&e.mesh.position.y<=.025)stain(e.mesh.position,.035+Math.random()*.045);disposeMesh(e.mesh);effects.splice(i,1);}}
  }
  resetSubjects();

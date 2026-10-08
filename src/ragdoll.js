@@ -1,4 +1,5 @@
 import RAPIER from '@dimforge/rapier3d-compat';
+import * as THREE from 'three';
 
 // Metres and kilograms. Adjacent capsules meet at their anatomical joint anchors.
 export const anatomy = [
@@ -24,12 +25,31 @@ export function createRagdoll(world,x,z){
  const find=name=>person.parts.find(p=>p.spec.name===name);
  function joint(aName,bName,anchor,axis,limits){const a=find(aName).body,b=find(bName).body,ap=a.translation(),bp=b.translation();const point={x:x+anchor[0],y:anchor[1],z:z+anchor[2]};const a1={x:point.x-ap.x,y:point.y-ap.y,z:point.z-ap.z},a2={x:point.x-bp.x,y:point.y-bp.y,z:point.z-bp.z};
   const desc=axis==='ball'?RAPIER.JointData.spherical(a1,a2):axis?RAPIER.JointData.revolute(a1,a2,axis):RAPIER.JointData.fixed(a1,{x:0,y:0,z:0,w:1},a2,{x:0,y:0,z:0,w:1});
-  const j=world.createImpulseJoint(desc,a,b,true);j.setContactsEnabled(false);if(limits)j.setLimits(...limits);if(j.configureMotorModel)j.configureMotorModel(RAPIER.MotorModel.ForceBased);j.limb=bName;j.parent=find(aName);j.child=find(bName);j.ball=axis==='ball';person.joints.push(j);
+  const j=world.createImpulseJoint(desc,a,b,true);j.setContactsEnabled(false);if(limits)j.setLimits(...limits);if(j.configureMotorModel)j.configureMotorModel(RAPIER.MotorModel.ForceBased);j.limb=bName;j.parent=find(aName);j.child=find(bName);j.ball=axis==='ball';j.anchorParent=a1;j.anchorChild=a2;j.limits=limits;person.joints.push(j);
  }
- const ax={x:1,y:0,z:0},az={x:0,y:0,z:1};
+ const ax={x:1,y:0,z:0};
  joint('pelvis','torso',[0,1.15,0],ax,[-.4,.5]);joint('torso','head',[0,1.7,0],ax,[-.45,.45]);
- for(const side of [-1,1]){joint('torso',`upperArm${side}`,[side*.35,1.57,0],'ball');joint(`upperArm${side}`,`forearm${side}`,[side*.35,1.215,.01],ax,[-2.2,.08]);joint('pelvis',`thigh${side}`,[side*.14,.88,0],ax,[-1.3,.5]);joint(`thigh${side}`,`shin${side}`,[side*.14,.475,0],ax,[-.05,2.2]);joint(`shin${side}`,`foot${side}`,[side*.14,.1,0]);}
+ for(const side of [-1,1]){joint('torso',`upperArm${side}`,[side*.35,1.57,0],'ball');joint(`upperArm${side}`,`forearm${side}`,[side*.35,1.215,.01],ax,[-2.2,.08]);joint('pelvis',`thigh${side}`,[side*.14,.88,0],ax,[-1.3,.5]);joint(`thigh${side}`,`shin${side}`,[side*.14,.475,0],ax,[-.05,2.2]);joint(`shin${side}`,`foot${side}`,[side*.14,.1,0],ax,[-.9,.9]);}
  person.torso=find('torso');
  return person;
 }
-export function activateRagdoll(person){if(!person.active)return;person.active=false;person.state='down';for(const p of person.parts){const v=p.body.linvel(),w=p.body.angvel();const speed=Math.hypot(v.x,v.y,v.z),spin=Math.hypot(w.x,w.y,w.z);if(speed>6){v.x*=6/speed;v.y*=6/speed;v.z*=6/speed;}if(spin>10){w.x*=10/spin;w.y*=10/spin;w.z*=10/spin;}p.body.setBodyType(RAPIER.RigidBodyType.Dynamic,true);p.body.recomputeMassPropertiesFromColliders();p.body.setLinvel({x:v.x,y:v.y,z:v.z},true);p.body.setAngvel({x:w.x,y:w.y,z:w.z},true);}}
+export function activateRagdoll(person){
+ if(!person.active)return;
+ person.active=false;person.state='down';person.recovery=null;person.blend=null;person.groundedTime=0;
+ person.stanceHeight=person.parts[0].body.translation().y;
+ // Keep the current gait angles; straightening mid-stride used to kick the body upward.
+ for(const j of person.joints){
+  const relative=new THREE.Quaternion().copy(j.parent.body.rotation()).invert().multiply(new THREE.Quaternion().copy(j.child.body.rotation()));
+  j.restRotation=relative.clone();j.restAngle=2*Math.atan2(relative.x,relative.w);
+  if(j.limits)j.restAngle=THREE.MathUtils.clamp(j.restAngle,...j.limits);
+  if(j.configureMotorPosition)j.configureMotorPosition(j.restAngle,0,0);
+ }
+ for(const p of person.parts){
+  const v=p.body.linvel(),w=p.body.angvel();const speed=Math.hypot(v.x,v.y,v.z),spin=Math.hypot(w.x,w.y,w.z);
+  if(speed>6){v.x*=6/speed;v.y*=6/speed;v.z*=6/speed;}
+  if(spin>10){w.x*=10/spin;w.y*=10/spin;w.z*=10/spin;}
+  p.body.resetForces(false);p.body.resetTorques(false);
+  p.body.setBodyType(RAPIER.RigidBodyType.Dynamic,true);p.body.recomputeMassPropertiesFromColliders();
+  p.body.setLinvel(v,true);p.body.setAngvel(w,true);
+ }
+}
