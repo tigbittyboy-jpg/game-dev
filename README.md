@@ -1,10 +1,10 @@
 # Gravity Yard
 
-A browser-based 3D physics sandbox built with Three.js and Rapier. Spawn objects, build stacks, change gravity, and experiment with collisions.
+A browser-based 3D physics sandbox built with Three.js and Rapier. A first-person physics playground with fictional ragdoll characters, a pistol, shotgun, bat, physics grab tool, and optional stylized blood effects. You can also orbit the scene, spawn props, and experiment with gravity.
 
 ## macOS: step-by-step setup
 
-The game is designed to work on both Apple Silicon and Intel Macs in a current version of Safari, Chrome, or Firefox with WebGL enabled. It does not require a desktop game engine. The build and physics have been checked in Linux; macOS browser behavior has not yet been tested directly.
+The game is designed to work on both Apple Silicon and Intel Macs in a current version of Safari, Chrome, or Firefox with WebGL enabled. It does not require a desktop game engine. The build, physics, and browser startup have been checked in Linux Chromium; macOS browser behavior has not yet been tested directly.
 
 ### 1. Install Node.js
 
@@ -87,6 +87,20 @@ The game must be served with the command above; double-clicking `index.html` wil
 - **Pause:** click Pause; click Resume to continue the simulation.
 - **Object rain:** drop a batch of mixed objects.
 - **Reset scene:** clear the objects and restore the starting arrangement. Your current world settings remain selected.
+
+### First-person mode, characters, and weapons
+
+1. Click **Enter first person**. The browser captures your mouse so you can aim. If the capture is released, click the scene to capture it again.
+2. Move with **W/A/S/D** and aim by moving your mouse. A mouse and keyboard are recommended.
+3. Press **1** for the pistol, **2** for the shotgun, **3** for the physics grab tool, or **4** for the bat.
+4. **Left-click** to fire or swing. The bat works within a short distance. The pistol holds 12 rounds and the shotgun holds 6; press **R** to reload from unlimited reserve ammunition.
+5. With the grab tool equipped, aim at a nearby prop or character and click to hold it in front of you. Move or aim to drag it around, then click again to release it.
+6. Press **E** to spawn a character ahead of you, or use **Spawn person** in the toolbar. Up to 12 characters can exist at once.
+7. Characters use connected physics body parts. Weapon impacts make them collapse into ragdolls. Blood is stylized particles and floor marks; there is no dismemberment. Uncheck **Blood effects** to stop new blood effects.
+8. Press **Esc** to release the mouse and access the toolbar. Click **Exit first person** to return to the orbit camera.
+9. Use **Clear people** to remove characters and their blood effects. **Reset scene** restores the starting props and characters.
+
+This is a prototype: characters have simple faces and clothing, remain in place until hit or grabbed, and have no dialogue or autonomous combat AI. Weapons have basic models, recoil, firing sounds, spread, and reload timers. Movement follows the floor and obstacles, with no jumping yet.
 
 The playground starts with a block pyramid, a ramp, and assorted objects. It supports up to 180 dynamic objects.
 
