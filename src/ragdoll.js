@@ -17,7 +17,7 @@ export const anatomy = [
 export function createRagdoll(world,x,z){
  const person={parts:[],joints:[],active:true,x,z,reaction:null,wounds:[],vitality:1,state:'idle',clock:0,lastHit:null,hitCount:0,injuries:{}};
  for(const spec of anatomy){const [px,py,pz]=spec.pos;
-  const body=world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(x+px,py,z+pz).setLinearDamping(.12).setAngularDamping(.65).setAdditionalSolverIterations(4).setCcdEnabled(true));
+  const body=world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(x+px,py,z+pz).setLinearDamping(.04).setAngularDamping(.18).setAdditionalSolverIterations(4).setCcdEnabled(false));
   const collider=spec.dims?RAPIER.ColliderDesc.cuboid(...spec.dims.map(v=>v/2)):RAPIER.ColliderDesc.capsule(spec.length/2,spec.radius);
   world.createCollider(collider.setMass(spec.mass).setFriction(.75).setRestitution(0),body);
   person.parts.push({body,spec,person});
@@ -49,7 +49,7 @@ export function activateRagdoll(person){
   if(speed>6){v.x*=6/speed;v.y*=6/speed;v.z*=6/speed;}
   if(spin>10){w.x*=10/spin;w.y*=10/spin;w.z*=10/spin;}
   p.body.resetForces(false);p.body.resetTorques(false);
-  p.body.setBodyType(RAPIER.RigidBodyType.Dynamic,true);p.body.recomputeMassPropertiesFromColliders();
+  p.body.setBodyType(RAPIER.RigidBodyType.Dynamic,true);p.body.enableCcd(true);p.body.recomputeMassPropertiesFromColliders();
   p.body.setLinvel(v,true);p.body.setAngvel(w,true);
  }
 }

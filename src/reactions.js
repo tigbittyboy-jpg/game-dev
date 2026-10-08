@@ -26,8 +26,8 @@ function ballMuscle(j,angles,strength,dt,attack=1){
  const magnitude=Math.hypot(error.x,error.y,error.z);if(magnitude<1e-5)return;
  const angle=2*Math.atan2(magnitude,Math.max(.001,error.w));axis.set(error.x,error.y,error.z).multiplyScalar(angle/magnitude);
  const v=j.child.body.angvel(),pv=j.parent.body.angvel();
- const maximum=j.limb==='head'?1.2:9;
- axis.set(axis.x*strength-(v.x-pv.x)*.6,axis.y*strength-(v.y-pv.y)*.6,axis.z*strength-(v.z-pv.z)*.6);
+ const maximum=j.limb==='head'?.4:3;
+ axis.set(axis.x*strength-(v.x-pv.x)*.16,axis.y*strength-(v.y-pv.y)*.16,axis.z*strength-(v.z-pv.z)*.16);
  axis.clampLength(0,maximum).multiplyScalar(dt);
  j.child.body.applyTorqueImpulse(axis,true);j.parent.body.applyTorqueImpulse({x:-axis.x,y:-axis.y,z:-axis.z},true);
 }
@@ -53,15 +53,15 @@ export function stepReaction(person,dt,held=false,context={}){
   const centre=feet.reduce((s,p)=>{const f=p.body.translation();return {x:s.x+f.x/2,z:s.z+f.z/2};},{x:0,z:0});
   // Preserve the stance height and soften support during the flinch, rather than
   // snapping every leg straight and lifting the pelvis to an arbitrary height.
-  const support=r?1-Math.exp(-r.age*12):1;
+  const support=r?1-Math.exp(-r.age*4):1;
   const gravity=Math.max(0,-(context.gravity??-9.8));
   // Feet and legs already bear their own weight through floor contact.
   const mass=person.parts.filter(p=>!p.spec.name.startsWith('thigh')&&!p.spec.name.startsWith('shin')&&!p.spec.name.startsWith('foot')).reduce((sum,p)=>sum+p.spec.mass,0),height=THREE.MathUtils.clamp(person.stanceHeight??.92,.82,1);
   pelvis.body.resetForces(false);pelvis.body.resetTorques(false);
-  pelvis.body.addForce({x:THREE.MathUtils.clamp((centre.x-(pos.x*.3+upper.x*.7))*180-velocity.x*45,-90,90)*support,y:THREE.MathUtils.clamp(mass*gravity+(height-pos.y)*230-velocity.y*55,0,mass*gravity*1.15)*support,z:THREE.MathUtils.clamp((centre.z-(pos.z*.3+upper.z*.7))*180-velocity.z*45,-90,90)*support},true);
-  pelvis.body.addTorque({x:THREE.MathUtils.clamp(-q.x*180-angular.x*22,-35,35)*support,y:-angular.y*2,z:THREE.MathUtils.clamp(-q.z*180-angular.z*22,-35,35)*support},true);
+  pelvis.body.addForce({x:THREE.MathUtils.clamp((centre.x-(pos.x*.3+upper.x*.7))*65-velocity.x*15,-45,45)*support,y:THREE.MathUtils.clamp(mass*gravity+(height-pos.y)*85-velocity.y*18,0,mass*gravity*1.15)*support,z:THREE.MathUtils.clamp((centre.z-(pos.z*.3+upper.z*.7))*65-velocity.z*15,-45,45)*support},true);
+  pelvis.body.addTorque({x:THREE.MathUtils.clamp(-q.x*55-angular.x*6,-14,14)*support,y:-angular.y*.5,z:THREE.MathUtils.clamp(-q.z*55-angular.z*6,-14,14)*support},true);
  }else if(person.balanceApplied){pelvis.body.resetForces(false);pelvis.body.resetTorques(false);person.balanceApplied=false;}
- if(standing&&r&&r.age>.85){resumeWalking(person);stepLocomotion(person,dt,context);return;}
+ if(standing&&r&&r.age>1.5){resumeWalking(person);stepLocomotion(person,dt,context);return;}
  // Only recover after settling on the floor: never while held, airborne, or dead.
  const torsoPos=person.torso.body.translation(),torsoSpeed=person.torso.body.linvel();
  const grounded=!held&&alive&&pos.y<.6&&torsoPos.y<.7&&person.parts.some(p=>p.body.translation().y<.25)&&Math.hypot(torsoSpeed.x,torsoSpeed.y,torsoSpeed.z)<1.6;
@@ -71,8 +71,8 @@ export function stepReaction(person,dt,held=false,context={}){
  }
  person.standing=standing;
  if(standing)person.state=r&&r.age<r.duration?'staggering':'guarding';
- const attack=r?1-Math.exp(-r.age*8):1;
- const effort=held||!alive?0:(.45+.55*person.vitality)*(.5+.5*attack);
+ const attack=r?1-Math.exp(-r.age*3):1;
+ const effort=held||!alive?0:(.45+.55*person.vitality)*(.12+.88*attack);
  if(!effort){
   if(!alive&&!person.passiveDamping){for(const p of person.parts){p.body.setAngularDamping(2.5);p.body.setLinearDamping(.25);}person.passiveDamping=true;}
   if(!person.musclesDisabled)for(const j of person.joints)if(j.configureMotorPosition)j.configureMotorPosition(0,0,0);
@@ -84,7 +84,7 @@ export function stepReaction(person,dt,held=false,context={}){
   if(j.ball){
    if(effort){const shoulder=limb.startsWith('upperArm');const guard=side===hitSide?.8:.5;
     const angles=shoulder?[-(.45+guard*.45+Math.sin(phase+side)*.38+flinch*.4),side*.12,side*(.18+Math.sin(phase*.65+side)*.16)]:[-.16+Math.sin(phase*.55)*.13,Math.sin(phase*.4)*.2,Math.cos(phase*.7)*.08];
-    ballMuscle(j,angles,limbEffort*(shoulder?12:2.2),dt,attack);
+    ballMuscle(j,angles,limbEffort*(shoulder?3.5:.7),dt,attack);
    }
   }else if(j.configureMotorPosition){
    let angle=0;
@@ -98,7 +98,7 @@ export function stepReaction(person,dt,held=false,context={}){
    if(limb.startsWith('foot'))angle=standing?(j.restAngle??0):-.15;
    const leg=limb.startsWith('thigh')||limb.startsWith('shin');
    if(!leg&&r&&j.restAngle!==undefined)angle=THREE.MathUtils.lerp(j.restAngle,angle,attack);
-   j.configureMotorPosition(angle*(standing&&leg?1:effort),limbEffort*(standing&&leg?120:limb==='head'?35:limb==='torso'?(standing?110:45):limb.startsWith('forearm')?20:36),limbEffort*(standing&&leg?14:limb==='head'?3:standing&&limb==='torso'?12:3));
+   j.configureMotorPosition(angle*(standing&&leg?1:effort),limbEffort*(standing&&leg?30:limb==='head'?8:limb==='torso'?(standing?22:10):limb.startsWith('forearm')?5:9),limbEffort*(standing&&leg?3:limb==='head'?.7:standing&&limb==='torso'?2:.65));
   }
  }
  if(effort)for(const p of person.parts)p.body.wakeUp();

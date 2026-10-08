@@ -9,11 +9,11 @@ const localRotations=person=>new Map(person.joints.map(j=>[j.limb,new THREE.Quat
 
 export function resumeWalking(person,mode='walk'){
  const root=person.parts[0].body;
- person.blend={age:0,duration:mode==='walk'?.9:1.1,position:vector(root.translation()),rotation:new THREE.Quaternion().copy(root.rotation()),locals:localRotations(person)};
+ person.blend={age:0,duration:mode==='walk'?.9:1.35,position:vector(root.translation()),rotation:new THREE.Quaternion().copy(root.rotation()),locals:localRotations(person)};
  person.x=root.translation().x;person.z=root.translation().z;
  person.active=true;person.balanceApplied=false;person.locomotionMode=mode;
  if(person.nav)person.nav.speed=0;
- for(const part of person.parts){part.body.resetForces(false);part.body.resetTorques(false);part.body.setBodyType(RAPIER.RigidBodyType.KinematicPositionBased,true);}
+ for(const part of person.parts){part.body.resetForces(false);part.body.resetTorques(false);part.body.setBodyType(RAPIER.RigidBodyType.KinematicPositionBased,true);part.body.enableCcd(false);}
 }
 
 // Interpolate joint rotations, then rebuild positions from the actual physics anchors.
@@ -79,8 +79,8 @@ function walkingPose(person,nav,dt){
  const phase=nav.phase,stride=nav.stride,amount=Math.min(1,nav.speed/1.2);
  const height=.92+Math.cos(phase*2)*.009*amount;
  const locals=new Map();
- locals.set('torso',rotation(.04+Math.sin(phase*2)*.025*amount));
- locals.set('head',rotation(-.035+Math.sin(phase+.4)*.025*amount));
+ locals.set('torso',rotation(.04+Math.sin(phase*2)*.06*amount));
+ locals.set('head',rotation(-.035+Math.sin(phase+.4)*.045*amount));
  for(const side of [-1,1]){
   const t=((phase+(side===1?Math.PI:0))%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
   // Smooth swing with a straight stance path; lift and toe-off have zero endpoint slope.
@@ -95,9 +95,9 @@ function walkingPose(person,nav,dt){
   const shin=Math.atan2(-(ankle.z-knee.z),-(ankle.y-knee.y));
   locals.set(`thigh${side}`,rotation(thigh));locals.set(`shin${side}`,rotation(shin-thigh));locals.set(`foot${side}`,rotation(-shin));
   const injured=person.hitCount>0,guardSide=person.lastHit?.endsWith('-1')?-1:1;
-  const arm=injured?-.55-(side===guardSide?.2:0)+Math.sin(phase+side)*.17:z/stride*.4*amount;
+  const arm=injured?-.35-(side===guardSide?.15:0)+Math.sin(phase+side)*.4:z/stride*.65*amount;
   locals.set(`upperArm${side}`,rotation(arm,0,side*.035));
-  locals.set(`forearm${side}`,rotation(injured?-.8+Math.sin(phase+.3+side)*.15:-.25-Math.max(0,-z/stride)*.18));
+  locals.set(`forearm${side}`,rotation(injured?-.65+Math.sin(phase+.3+side)*.35:-.2-Math.max(0,-z/stride)*.35));
  }
  return {height,root:rotation(0,nav.heading+Math.sin(phase)*.018*amount,Math.cos(phase)*.008*amount),locals};
 }
