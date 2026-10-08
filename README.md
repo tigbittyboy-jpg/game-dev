@@ -102,11 +102,11 @@ The game must be served with the command above; double-clicking `index.html` wil
 
 ### Character behavior
 
-Characters breathe, blink, and shift slightly while standing. Hits or grabbing release them into connected physics bodies. Surviving characters continue guarded arm movement, curling, head movement, and asymmetric leg reactions; they no longer stop moving when a short reaction timer expires. Repeated hits restart the immediate flinch, reduce vitality, and weaken the affected limb. An unresponsive character stops voluntary movement but remains collidable, grabbable, and responsive to external impacts.
+Characters breathe, blink, and shift slightly while standing. Hits or grabbing release them into connected physics bodies. Light injuries use foot-grounded balance assistance so subjects stagger and guard while staying upright; substantial leg injury, low vitality, loss of footing, or grabbing disables that support. The neck has a hard angular limit even after incapacitation. Surviving characters continue guarded arm movement, curling, head movement, and asymmetric leg reactions; they no longer stop moving when a short reaction timer expires. Repeated hits restart the immediate flinch, reduce vitality, and weaken the affected limb. An unresponsive character stops voluntary movement but remains collidable, grabbable, and responsive to external impacts.
 
 Wounds stay attached to the hit body part and intermittently drip for roughly 14–30 seconds, gradually slowing down. Closely spaced pellet hits merge into one wound. Blood effects include small impact marks, airborne droplets, and floor stains. The **Blood** checkbox disables new effects and clears airborne droplets; clearing subjects or resetting removes all marks and stains. There is no dismemberment.
 
-The clean gridded chamber starts with four subjects and no obstacles. It supports up to 180 spawned props and 12 subjects. The models and reactions are procedural; characters do not walk, navigate, speak, or simulate an anatomically accurate medical system. Standing subjects use a controlled idle pose rather than a full active balance controller.
+The clean gridded chamber starts with four subjects and no obstacles. It supports up to 180 spawned props and 12 subjects. The models and reactions are procedural; characters do not walk, navigate, speak, or simulate an anatomically accurate medical system. Idle subjects use a controlled pose. Injured standing subjects use assisted physical balance; this is not a full walking controller.
 
 ### 7. Stop and restart
 
@@ -158,7 +158,7 @@ The `/workspace` paths are specific to the cloud environment; use the macOS step
 npm test
 ```
 
-The physics regression tests check continued visible limb movement long after a first hit, repeated-hit wake-up and momentum, incapacitated settling, self-collision, floor collisions, coherent idle motion, wound expiry, and stability with multiple injured characters. Physics runs at 120 Hz with 12 solver iterations. Bodies weigh about 53 kg. Only directly joined neighbors disable collision at their attachment points.
+The physics regression tests check continued visible limb movement long after a first hit, repeated-hit wake-up and momentum, incapacitated settling, neck limits under head impacts, resistance to mild hits, grounded struggle after leg injury, self-collision, floor collisions, coherent idle motion, wound expiry, and stability with multiple injured characters. Physics runs at 120 Hz with 12 solver iterations. Bodies weigh about 53 kg. Only directly joined neighbors disable collision at their attachment points.
 
 For browser play tests:
 

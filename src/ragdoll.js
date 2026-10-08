@@ -27,7 +27,7 @@ export function createRagdoll(world,x,z){
   const j=world.createImpulseJoint(desc,a,b,true);j.setContactsEnabled(false);if(limits)j.setLimits(...limits);if(j.configureMotorModel)j.configureMotorModel(RAPIER.MotorModel.ForceBased);j.limb=bName;j.parent=find(aName);j.child=find(bName);j.ball=axis==='ball';person.joints.push(j);
  }
  const ax={x:1,y:0,z:0},az={x:0,y:0,z:1};
- joint('pelvis','torso',[0,1.15,0],ax,[-.4,.5]);joint('torso','head',[0,1.7,0],'ball');
+ joint('pelvis','torso',[0,1.15,0],ax,[-.4,.5]);joint('torso','head',[0,1.7,0],ax,[-.45,.45]);
  for(const side of [-1,1]){joint('torso',`upperArm${side}`,[side*.35,1.57,0],'ball');joint(`upperArm${side}`,`forearm${side}`,[side*.35,1.215,.01],ax,[-2.2,.08]);joint('pelvis',`thigh${side}`,[side*.14,.88,0],ax,[-1.3,.5]);joint(`thigh${side}`,`shin${side}`,[side*.14,.475,0],ax,[-.05,2.2]);joint(`shin${side}`,`foot${side}`,[side*.14,.1,0]);}
  person.torso=find('torso');
  return person;

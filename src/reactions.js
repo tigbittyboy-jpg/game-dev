@@ -43,6 +43,21 @@ export function stepReaction(person,dt,held=false){
  person.state=held?'held':!alive?'unresponsive':r&&r.age<r.duration?'reacting':'injured';
  const phase=person.clock*2.1+(person.motionPhase??person.x);
  const flinch=alive&&r?Math.exp(-r.age*2.8):0;
+ const pelvis=person.parts.find(p=>p.spec.name==='pelvis'),pos=pelvis.body.translation();
+ const feet=person.parts.filter(p=>p.spec.name.startsWith('foot'));
+ const legDamage=Math.max(...person.parts.filter(p=>p.spec.name.startsWith('shin')||p.spec.name.startsWith('thigh')).map(p=>person.injuries[p.spec.name]||0));
+ const standing=!held&&alive&&person.vitality>.55&&legDamage<.35&&pos.y>.65&&feet.some(p=>p.body.translation().y<.2);
+ if(standing){
+  person.balanceApplied=true;
+  const upper=person.torso.body.translation(),velocity=pelvis.body.linvel(),q=pelvis.body.rotation(),angular=pelvis.body.angvel();
+  const centre=feet.reduce((s,p)=>{const f=p.body.translation();return {x:s.x+f.x/2,z:s.z+f.z/2};},{x:0,z:0});
+  // Grounded assistance only: never lift a fallen or airborne body back into its idle pose.
+  pelvis.body.resetForces(false);pelvis.body.resetTorques(false);
+  pelvis.body.addForce({x:THREE.MathUtils.clamp((centre.x-(pos.x*.3+upper.x*.7))*450-velocity.x*90,-120,120),y:THREE.MathUtils.clamp((1-pos.y)*650-velocity.y*85,0,520),z:THREE.MathUtils.clamp((centre.z-(pos.z*.3+upper.z*.7))*450-velocity.z*90,-120,120)},true);
+  pelvis.body.addTorque({x:THREE.MathUtils.clamp(-q.x*400-angular.x*35,-60,60),y:-angular.y*3,z:THREE.MathUtils.clamp(-q.z*400-angular.z*35,-60,60)},true);
+ }else if(person.balanceApplied){pelvis.body.resetForces(false);pelvis.body.resetTorques(false);person.balanceApplied=false;}
+ person.standing=standing;
+ if(standing)person.state=r&&r.age<r.duration?'staggering':'guarding';
  const effort=held||!alive?0:.45+.55*person.vitality;
  if(!effort){
   if(!person.musclesDisabled)for(const j of person.joints)if(j.configureMotorPosition)j.configureMotorPosition(0,0,0);
@@ -53,16 +68,20 @@ export function stepReaction(person,dt,held=false){
  for(const j of person.joints){const limb=j.limb,side=limb.endsWith('-1')?-1:1;const impairment=1-.7*(person.injuries[limb]||0);const limbEffort=effort*impairment;
   if(j.ball){
    if(effort){const shoulder=limb.startsWith('upperArm');const guard=side===hitSide?.8:.5;
-    const angles=shoulder?[-(.45+guard*.45+Math.sin(phase+side)*.22+flinch*.4),side*.12,side*(.18+Math.sin(phase*.65+side)*.16)]:[-.16+Math.sin(phase*.55)*.13,Math.sin(phase*.4)*.2,Math.cos(phase*.7)*.08];
+    const angles=shoulder?[-(.45+guard*.45+Math.sin(phase+side)*.38+flinch*.4),side*.12,side*(.18+Math.sin(phase*.65+side)*.16)]:[-.16+Math.sin(phase*.55)*.13,Math.sin(phase*.4)*.2,Math.cos(phase*.7)*.08];
     ballMuscle(j,angles,limbEffort*(shoulder?10:2.2),dt);
    }
   }else if(j.configureMotorPosition){
    let angle=0;
-   if(limb.startsWith('forearm'))angle=-(.65+(side===hitSide?.4:.15)+Math.sin(phase+side*1.8)*.35+flinch*.25);
+   if(limb.startsWith('forearm'))angle=-(.65+(side===hitSide?.4:.15)+Math.sin(phase+side*1.8)*.55+flinch*.25);
    else if(limb.startsWith('shin'))angle=.25+(Math.sin(phase*.75+side)+1)*.3+flinch*.25;
    else if(limb.startsWith('thigh'))angle=-.15+(Math.sin(phase*.75+side)+1)*-.13;
-   else if(limb==='torso')angle=.14+Math.sin(phase*.55)*.09+flinch*.12;
-   j.configureMotorPosition(angle*effort,limbEffort*(limb==='torso'?22:limb.startsWith('forearm')?14:24),limbEffort*2);
+   else if(limb==='torso')angle=standing?.04+flinch*.12:.2+Math.sin(phase*.55)*.12+flinch*.15;
+   else if(limb==='head')angle=-.08+Math.sin(phase*.65)*.12;
+   if(standing&&limb.startsWith('thigh'))angle=-.015;
+   if(standing&&limb.startsWith('shin'))angle=.04+flinch*.025;
+   const leg=limb.startsWith('thigh')||limb.startsWith('shin');
+   j.configureMotorPosition(angle*effort,limbEffort*(standing&&leg?450:limb==='head'?35:limb==='torso'?(standing?300:65):limb.startsWith('forearm')?20:36),limbEffort*(standing&&leg?30:limb==='head'?3:standing&&limb==='torso'?20:3));
   }
  }
  if(effort)for(const p of person.parts)p.body.wakeUp();
