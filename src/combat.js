@@ -17,6 +17,7 @@ export function createCombat({scene,camera,renderer,world,controls,objects,toast
  const hud=ui.querySelector('#fps-hud'),ammoUI=ui.querySelector('#ammo'),subjectUI=ui.querySelector('#subject-hud');
  const people=[],effects=[],stains=[],transients=[],keys=new Set();
  let ads=false;
+ let threat=null;
  let fps=false,yaw=0,pitch=0,weapon=0,grab=null,grabDistance=3,blood=true,simTime=0,nextFire=0,reloadAt=0;
  let savedCamera,savedTarget,verticalVelocity=0,grounded=false,recoil=0,flashUntil=0,hitUntil=0,hudClock=0,walkTime=0;
  const magazines=weapons.map(w=>w.capacity);
@@ -79,7 +80,7 @@ export function createCombat({scene,camera,renderer,world,controls,objects,toast
  function cast(spread=0){ray.setFromCamera(new THREE.Vector2((Math.random()-.5)*spread,(Math.random()-.5)*spread),camera);const meshes=[...objects.map(o=>o.mesh),...people.flatMap(p=>p.parts.map(o=>o.mesh)),...scene.children.filter(m=>m.isMesh&&m.userData.solid)];const hit=ray.intersectObjects(meshes,false)[0];if(!hit)return null;return {hit,target:objects.find(o=>o.mesh===hit.object)||people.flatMap(p=>p.parts).find(o=>o.mesh===hit.object),dir:ray.ray.direction.clone()};}
  function use(){if(!fps||document.pointerLockElement!==renderer.domElement||isPaused()||reloadAt||simTime<nextFire)return;
   if(weapon===2){if(grab){grab=null;}else{const r=cast();if(r?.target&&r.hit.distance<12){grab=r.target;grabDistance=THREE.MathUtils.clamp(r.hit.distance,1.5,6);if(grab.person)activateRagdoll(grab.person);}}weaponUI();return;}
-  const w=weapons[weapon];if(w.capacity&&magazines[weapon]===0){reload();return;}nextFire=simTime+w.cooldown;if(w.capacity)magazines[weapon]--;flashUntil=simTime+.055;recoil=weapon===1?.12:weapon===3?.45:.045;sound();
+  const w=weapons[weapon];if(w.capacity&&magazines[weapon]===0){reload();return;}nextFire=simTime+w.cooldown;if(weapon<2)threat={...camera.position,until:simTime+.6};if(w.capacity)magazines[weapon]--;flashUntil=simTime+.055;recoil=weapon===1?.12:weapon===3?.45:.045;sound();
   let connected=false;
   for(let i=0;i<(w.pellets||1);i++){const r=cast(w.spread||0);if(!r||!r.target||(weapon===3&&r.hit.distance>2.8))continue;const {hit,target,dir}=r;
    if(target.person)activateRagdoll(target.person);
@@ -94,14 +95,14 @@ export function createCombat({scene,camera,renderer,world,controls,objects,toast
  function enter(){if(fps)return;fps=true;savedCamera=camera.position.clone();savedTarget=controls.target.clone();controls.enabled=false;playerCollider.setEnabled(true);player.setTranslation({x:0,y:1,z:7},true);verticalVelocity=0;yaw=0;pitch=0;hud.style.display='block';document.body.classList.add('first-person','help-hidden');ui.querySelector('#help').setAttribute('aria-pressed','false');gun.visible=true;camera.fov=70;camera.updateProjectionMatrix();camera.rotation.order='YXZ';capture();weaponUI();}
  function capture(){try{const p=renderer.domElement.requestPointerLock();p?.catch(()=>toast('Click the scene to capture the mouse.'));}catch{toast('Click the scene to capture the mouse.');}}
  function exit(){if(!fps)return;fps=false;ads=false;document.exitPointerLock();playerCollider.setEnabled(false);grab=null;keys.clear();gun.visible=false;hud.style.display='none';document.body.classList.remove('first-person','help-hidden');camera.position.copy(savedCamera);camera.fov=45;camera.updateProjectionMatrix();controls.target.copy(savedTarget);controls.enabled=true;controls.update();}
- function resetSubjects(){clear();for(let i=0;i<4;i++)spawnPerson(-3+i*2,-2);magazines.splice(0,magazines.length,...weapons.map(w=>w.capacity));reloadAt=0;nextFire=0;hitUntil=0;weaponUI();}
+ function resetSubjects(){clear();threat=null;for(let i=0;i<4;i++)spawnPerson(-3+i*2,-2);magazines.splice(0,magazines.length,...weapons.map(w=>w.capacity));reloadAt=0;nextFire=0;hitUntil=0;weaponUI();}
  function toggleHelp(){const hidden=document.body.classList.toggle('help-hidden');ui.querySelector('#help').setAttribute('aria-pressed',String(!hidden));}
  ui.querySelector('#help').onclick=toggleHelp;
  ui.querySelector('#fps').onclick=enter;ui.querySelector('#exit-fps').onclick=exit;ui.querySelector('#person').onclick=()=>spawnPerson();ui.querySelector('#clear-people').onclick=clear;
  ui.querySelector('#reset-fps').onclick=()=>document.querySelector('#reset').click();ui.querySelector('#pause-fps').onclick=()=>document.querySelector('#pause').click();
  ui.querySelector('#blood').onchange=e=>{blood=e.target.checked;if(!blood){effects.forEach(e=>disposeMesh(e.mesh));effects.length=0;}};
  document.addEventListener('pointerlockchange',()=>{keys.clear();ads=false;ui.querySelector('#lock-hint').style.display=document.pointerLockElement===renderer.domElement?'none':'block';});
- document.addEventListener('mousemove',e=>{if(fps&&document.pointerLockElement===renderer.domElement){yaw-=e.movementX*.0018;pitch=THREE.MathUtils.clamp(pitch-e.movementY*.0018,-1.45,1.45);}});
+ document.addEventListener('mousemove',e=>{if(fps&&document.pointerLockElement===renderer.domElement){yaw-=e.movementX*.0018;pitch=THREE.MathUtils.clamp(pitch-e.movementY*.0018,-1.45,1.45);camera.rotation.set(pitch+recoil*.12,yaw,0,'YXZ');camera.updateMatrixWorld();}});
  window.addEventListener('blur',()=>keys.clear());
  const handled=['KeyW','KeyA','KeyS','KeyD','Space','KeyE','KeyR','KeyP','KeyX','KeyH','Digit1','Digit2','Digit3','Digit4'];
  window.addEventListener('keydown',e=>{if(!fps)return;if(handled.includes(e.code)){e.preventDefault();e.stopImmediatePropagation();}if(e.code==='KeyH'&&!e.repeat){toggleHelp();return;}if(document.pointerLockElement!==renderer.domElement)return;keys.add(e.code);if(e.repeat)return;
@@ -117,7 +118,7 @@ export function createCombat({scene,camera,renderer,world,controls,objects,toast
  renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
  renderer.domElement.addEventListener('wheel',e=>{if(fps&&grab){e.preventDefault();e.stopImmediatePropagation();grabDistance=THREE.MathUtils.clamp(grabDistance+e.deltaY*.004,1.5,7);}}, {capture:true,passive:false});
  function step(dt){simTime+=dt;
-  for(const p of people){stepReaction(p,dt,grab?.person===p);stepWounds(p,dt,bleed);}
+  for(const p of people){stepReaction(p,dt,grab?.person===p,{people,objects,player:fps?player.translation():null,threat:threat&&simTime<threat.until?threat:null});stepWounds(p,dt,bleed);}
   if(fps){const p=player.translation(),moving=document.pointerLockElement===renderer.domElement;const speed=keys.has('ShiftLeft')||keys.has('ShiftRight')?6:3.7;const v=new THREE.Vector3(moving?Number(keys.has('KeyD'))-Number(keys.has('KeyA')):0,0,moving?Number(keys.has('KeyS'))-Number(keys.has('KeyW')):0).normalize().applyAxisAngle(new THREE.Vector3(0,1,0),yaw).multiplyScalar(dt*speed);verticalVelocity=Math.max(-20,verticalVelocity+world.gravity.y*dt);controller.computeColliderMovement(playerCollider,{x:v.x,y:verticalVelocity*dt,z:v.z});const m=controller.computedMovement();grounded=controller.computedGrounded();if(grounded&&verticalVelocity<0)verticalVelocity=-.1;player.setNextKinematicTranslation({x:p.x+m.x,y:p.y+m.y,z:p.z+m.z});if(v.lengthSq())walkTime+=dt*speed;}
   if(grab){const point=camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(grabDistance).add(camera.position),pos=grab.body.translation(),v=grab.body.linvel(),mass=grab.body.mass();const impulse=new THREE.Vector3((point.x-pos.x)*16-v.x*8,(point.y-pos.y)*16-v.y*8-world.gravity.y,(point.z-pos.z)*16-v.z*8).clampLength(0,35).multiplyScalar(dt*mass);grab.body.applyImpulse(impulse,true);}
  }
@@ -129,7 +130,7 @@ export function createCombat({scene,camera,renderer,world,controls,objects,toast
   gun.rotation.set(reloadAt?-.5:recoil,weapon===3?recoil:0,weapon===3?-recoil:0);gun.position.y=-.24+(reloadAt?-.14:0)+(fps&&grounded?Math.sin(walkTime*2)*.006:0);
   ui.querySelector('#hit-marker').style.opacity=simTime<hitUntil?'1':'0';ui.querySelector('#pause-fps').textContent=isPaused()?'Resume':'Pause';
   for(const p of people)for(const o of p.parts){o.mesh.position.copy(o.body.translation());o.mesh.quaternion.copy(o.body.rotation());if(o.spec.name==='torso')o.mesh.scale.z=1+(p.vitality>0?Math.sin(simTime*(p.active?2:3.1)+p.x)*.014:0);if(o.face)for(const eye of o.face.children)eye.scale.y=p.vitality===0?.18:Math.sin(simTime*1.4+p.x)>.992?.12:1;}
-  if(fps){const p=player.translation();camera.position.set(p.x,p.y+.65,p.z);camera.rotation.set(pitch+recoil*.12,yaw,0,'YXZ');camera.updateMatrixWorld();hudClock+=dt;if(hudClock>.1){hudClock=0;const r=cast();const p=r?.target?.person;subjectUI.style.display=p?'block':'none';if(p){const health=Math.round(p.vitality*100);subjectUI.innerHTML=`<small>SUBJECT ${String(p.id).padStart(2,'0')} · ${r.target.spec.name.replace(/-?1$/,'')}</small><strong>${p.state==='unresponsive'?'Unresponsive':p.state==='idle'?'Standing':p.state==='held'?'Held':p.state==='staggering'?'Staggering':p.state==='guarding'?'Standing · guarding':p.state==='reacting'?'Hit reaction':'Injured · struggling'}</strong><div class="health-track"><i style="width:${health}%"></i></div><span>${health}% vitality · ${p.wounds.length} active wounds</span>`;}}}
+  if(fps){const p=player.translation();camera.position.set(p.x,p.y+.65,p.z);camera.rotation.set(pitch+recoil*.12,yaw,0,'YXZ');camera.updateMatrixWorld();hudClock+=dt;if(hudClock>.1){hudClock=0;const r=cast();const p=r?.target?.person;subjectUI.style.display=p?'block':'none';if(p){const health=Math.round(p.vitality*100);subjectUI.innerHTML=`<small>SUBJECT ${String(p.id).padStart(2,'0')} · ${r.target.spec.name.replace(/-?1$/,'')}</small><strong>${p.state==='unresponsive'?'Unresponsive':p.state==='idle'?'Standing':p.state==='held'?'Held':p.state==='walking'?'Walking':p.state==='fleeing'?'Fleeing':p.state==='limping'?'Injured · retreating':p.state==='staggering'?'Staggering':p.state==='guarding'?'Standing · guarding':p.state==='reacting'?'Hit reaction':'Injured · struggling'}</strong><div class="health-track"><i style="width:${health}%"></i></div><span>${health}% vitality · ${p.wounds.length} active wounds</span>`;}}}
   for(let i=effects.length-1;i>=0;i--){const e=effects[i];if(!isPaused()){e.life-=dt;e.vel.y+=world.gravity.y*dt;e.mesh.position.addScaledVector(e.vel,dt);}if(e.life<=0||e.mesh.position.y<=.025){if(blood&&e.mesh.position.y<=.025)stain(e.mesh.position,.035+Math.random()*.045);disposeMesh(e.mesh);effects.splice(i,1);}}
  }
  resetSubjects();

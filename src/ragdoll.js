@@ -32,4 +32,4 @@ export function createRagdoll(world,x,z){
  person.torso=find('torso');
  return person;
 }
-export function activateRagdoll(person){if(!person.active)return;person.active=false;person.state='down';for(const p of person.parts){p.body.setBodyType(RAPIER.RigidBodyType.Dynamic,true);p.body.recomputeMassPropertiesFromColliders();p.body.setLinvel({x:0,y:0,z:0},true);p.body.setAngvel({x:0,y:0,z:0},true);}}
+export function activateRagdoll(person){if(!person.active)return;person.active=false;person.state='down';for(const p of person.parts){const v=p.body.linvel(),w=p.body.angvel();const speed=Math.hypot(v.x,v.y,v.z),spin=Math.hypot(w.x,w.y,w.z);if(speed>6){v.x*=6/speed;v.y*=6/speed;v.z*=6/speed;}if(spin>10){w.x*=10/spin;w.y*=10/spin;w.z*=10/spin;}p.body.setBodyType(RAPIER.RigidBodyType.Dynamic,true);p.body.recomputeMassPropertiesFromColliders();p.body.setLinvel({x:v.x,y:v.y,z:v.z},true);p.body.setAngvel({x:w.x,y:w.y,z:w.z},true);}}
