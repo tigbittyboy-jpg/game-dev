@@ -14,7 +14,7 @@ export const anatomy = [
  ])
 ];
 export function createRagdoll(world,x,z){
- const person={parts:[],joints:[],active:true,x,z,reaction:null,wounds:[],vitality:1};
+ const person={parts:[],joints:[],active:true,x,z,reaction:null,wounds:[],vitality:1,state:'idle',clock:0,lastHit:null,hitCount:0,injuries:{}};
  for(const spec of anatomy){const [px,py,pz]=spec.pos;
   const body=world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(x+px,py,z+pz).setLinearDamping(.12).setAngularDamping(.65).setAdditionalSolverIterations(4).setCcdEnabled(true));
   const collider=spec.dims?RAPIER.ColliderDesc.cuboid(...spec.dims.map(v=>v/2)):RAPIER.ColliderDesc.capsule(spec.length/2,spec.radius);
@@ -23,13 +23,13 @@ export function createRagdoll(world,x,z){
  }
  const find=name=>person.parts.find(p=>p.spec.name===name);
  function joint(aName,bName,anchor,axis,limits){const a=find(aName).body,b=find(bName).body,ap=a.translation(),bp=b.translation();const point={x:x+anchor[0],y:anchor[1],z:z+anchor[2]};const a1={x:point.x-ap.x,y:point.y-ap.y,z:point.z-ap.z},a2={x:point.x-bp.x,y:point.y-bp.y,z:point.z-bp.z};
-  const desc=axis?RAPIER.JointData.revolute(a1,a2,axis):RAPIER.JointData.fixed(a1,{x:0,y:0,z:0,w:1},a2,{x:0,y:0,z:0,w:1});
-  const j=world.createImpulseJoint(desc,a,b,true);j.setContactsEnabled(false);if(limits)j.setLimits(...limits);j.limb=bName;person.joints.push(j);
+  const desc=axis==='ball'?RAPIER.JointData.spherical(a1,a2):axis?RAPIER.JointData.revolute(a1,a2,axis):RAPIER.JointData.fixed(a1,{x:0,y:0,z:0,w:1},a2,{x:0,y:0,z:0,w:1});
+  const j=world.createImpulseJoint(desc,a,b,true);j.setContactsEnabled(false);if(limits)j.setLimits(...limits);if(j.configureMotorModel)j.configureMotorModel(RAPIER.MotorModel.ForceBased);j.limb=bName;j.parent=find(aName);j.child=find(bName);j.ball=axis==='ball';person.joints.push(j);
  }
  const ax={x:1,y:0,z:0},az={x:0,y:0,z:1};
- joint('pelvis','torso',[0,1.15,0],ax,[-.4,.5]);joint('torso','head',[0,1.7,0],ax,[-.45,.45]);
- for(const side of [-1,1]){joint('torso',`upperArm${side}`,[side*.35,1.57,0],az,[-1.6,1.6]);joint(`upperArm${side}`,`forearm${side}`,[side*.35,1.215,.01],ax,[-2.2,.08]);joint('pelvis',`thigh${side}`,[side*.14,.88,0],ax,[-1.3,.5]);joint(`thigh${side}`,`shin${side}`,[side*.14,.475,0],ax,[-.05,2.2]);joint(`shin${side}`,`foot${side}`,[side*.14,.1,0]);}
+ joint('pelvis','torso',[0,1.15,0],ax,[-.4,.5]);joint('torso','head',[0,1.7,0],'ball');
+ for(const side of [-1,1]){joint('torso',`upperArm${side}`,[side*.35,1.57,0],'ball');joint(`upperArm${side}`,`forearm${side}`,[side*.35,1.215,.01],ax,[-2.2,.08]);joint('pelvis',`thigh${side}`,[side*.14,.88,0],ax,[-1.3,.5]);joint(`thigh${side}`,`shin${side}`,[side*.14,.475,0],ax,[-.05,2.2]);joint(`shin${side}`,`foot${side}`,[side*.14,.1,0]);}
  person.torso=find('torso');
  return person;
 }
-export function activateRagdoll(person){if(!person.active)return;person.active=false;for(const p of person.parts){p.body.setBodyType(RAPIER.RigidBodyType.Dynamic,true);p.body.recomputeMassPropertiesFromColliders();p.body.setLinvel({x:0,y:0,z:0},true);p.body.setAngvel({x:0,y:0,z:0},true);}}
+export function activateRagdoll(person){if(!person.active)return;person.active=false;person.state='down';for(const p of person.parts){p.body.setBodyType(RAPIER.RigidBodyType.Dynamic,true);p.body.recomputeMassPropertiesFromColliders();p.body.setLinvel({x:0,y:0,z:0},true);p.body.setAngvel({x:0,y:0,z:0},true);}}

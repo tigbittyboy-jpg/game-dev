@@ -90,19 +90,23 @@ The game must be served with the command above; double-clicking `index.html` wil
 
 ### First-person mode, characters, and weapons
 
-1. Click **Enter first person**. The browser captures your mouse so you can aim. If the capture is released, click the scene to capture it again.
-2. Move with **W/A/S/D** and aim by moving your mouse. A mouse and keyboard are recommended.
-3. Press **1** for the pistol, **2** for the shotgun, **3** for the physics grab tool, or **4** for the bat.
-4. **Left-click** to fire or swing. The bat works within a short distance. The pistol holds 12 rounds and the shotgun holds 6; press **R** to reload from unlimited reserve ammunition.
-5. With the grab tool equipped, aim at a nearby prop or character and click to hold it in front of you. Move or aim to drag it around, then click again to release it.
-6. Press **E** to spawn a character ahead of you, or use **Spawn person** in the toolbar. Up to 12 characters can exist at once.
-7. Characters stand in a stable idle pose until hit or grabbed, then release into lighter ragdolls with limited spine, neck, shoulder, elbow, hip, and knee joints. Weapon impacts make them collapse, rather than launching very light limbs. Hits trigger brief joint-limited curling and flinching, followed by fading reflex twitches. Characters also breathe and blink while standing. Blood uses stylized particles and floor marks; wounds intermittently drip for 5–10 seconds and follow the hit body part. Uncheck **Blood effects** to stop new effects and clear airborne droplets. Pause freezes reactions and bleeding. There is no dismemberment.
-8. Press **Esc** to release the mouse and access the toolbar. Click **Exit first person** to return to the orbit camera.
-9. Use **Clear people** to remove characters and their blood effects. **Reset scene** removes spawned props and restores the four starting characters.
+1. Click **Play first person**. The browser captures your mouse. Click the chamber again to recapture it after pressing **Esc**.
+2. Move with **W/A/S/D**, hold **Shift** to sprint, and press **Space** to jump. Move the mouse to aim.
+3. Press **1** for the pistol, **2** for the shotgun, **3** for the grab tool, or **4** for the baton. You can also select a weapon in the lower-left tray when the mouse is released.
+4. **Left-click** to fire or swing. Hold **right-click** with a gun to aim more closely. The baton reaches 2.8 metres. The pistol holds 12 rounds and the shotgun holds 6; **R** reloads from unlimited reserve ammunition.
+5. The orange hit marker confirms a character impact. Aim at a character to inspect its body part, vitality, injury state, and number of bleeding wounds. Damage is location-dependent: head hits do more damage; shin and forearm hits do less. These are game values, not a medical simulation.
+6. With the grab tool, click a nearby body part or prop to hold it. **Scroll** changes the holding distance; click again to release, or **right-click** to throw it. Grabbed bodies remain physical.
+7. Press **E** to spawn a subject ahead of you, or click **＋ Subject**. Up to 12 subjects can exist at once.
+8. Press **P** to pause or resume. Pausing freezes physics, reactions, wounds, firing cooldowns, and reload progress. Press **X** to reset the chamber, starting subjects, and ammunition.
+9. Press **Esc** to release the mouse. **Controls** or **H** toggles the expanded help panel. **Orbit view** returns to the editor camera. **Clear subjects** removes characters and their blood effects.
 
-This is a prototype: characters have simple faces and clothing, remain in place until hit or grabbed, and have no dialogue or autonomous combat AI. Weapons have basic models, recoil, firing sounds, spread, and reload timers. Movement follows the floor and obstacles, with no jumping yet.
+### Character behavior
 
-The scene is a clean gray gridded test chamber with four standing subjects and no preset obstacles. Spawn props only when you want them. It supports up to 180 dynamic props and 12 subjects.
+Characters breathe, blink, and shift slightly while standing. Hits or grabbing release them into connected physics bodies. Surviving characters continue guarded arm movement, curling, head movement, and asymmetric leg reactions; they no longer stop moving when a short reaction timer expires. Repeated hits restart the immediate flinch, reduce vitality, and weaken the affected limb. An unresponsive character stops voluntary movement but remains collidable, grabbable, and responsive to external impacts.
+
+Wounds stay attached to the hit body part and intermittently drip for roughly 14–30 seconds, gradually slowing down. Closely spaced pellet hits merge into one wound. Blood effects include small impact marks, airborne droplets, and floor stains. The **Blood** checkbox disables new effects and clears airborne droplets; clearing subjects or resetting removes all marks and stains. There is no dismemberment.
+
+The clean gridded chamber starts with four subjects and no obstacles. It supports up to 180 spawned props and 12 subjects. The models and reactions are procedural; characters do not walk, navigate, speak, or simulate an anatomically accurate medical system. Standing subjects use a controlled idle pose rather than a full active balance controller.
 
 ### 7. Stop and restart
 
@@ -148,6 +152,31 @@ npm run dev
 
 The `/workspace` paths are specific to the cloud environment; use the macOS steps above on your Mac.
 
-## Physics validation
+## Tests
 
-Run `npm test` to check standing-pose stability, hit reactions at multiple body parts, joint separation, floor collisions, settling, and collisions between characters. Ragdolls use a 120 Hz physics step with 12 solver iterations. Self-collision is enabled for non-adjacent body parts. Only directly jointed neighboring parts ignore each other to prevent contact fighting at their shared anchors. Contact with the room, props, and other characters remains enabled. Characters weigh roughly 53 kg; stronger hit impulses make them less sluggish. Tests also check bounded reactions and wound emission lifetimes. The idle pose is held until activation; this is not an active walking or balance simulation.
+```sh
+npm test
+```
+
+The physics regression tests check continued visible limb movement long after a first hit, repeated-hit wake-up and momentum, incapacitated settling, self-collision, floor collisions, coherent idle motion, wound expiry, and stability with multiple injured characters. Physics runs at 120 Hz with 12 solver iterations. Bodies weigh about 53 kg. Only directly joined neighbors disable collision at their attachment points.
+
+For browser play tests:
+
+```sh
+npx playwright install chromium
+npm run test:browser
+```
+
+The cloud environment uses its existing system Chromium when available. The browser suite checks actual aiming and shooting, ongoing reactions, repeated hits, reload, pause, jump, grabbing and throwing, shotgun and baton impacts, blood controls, and reset. Failure screenshots and traces are written to ignored `test-results/`.
+
+## Update an existing Git checkout
+
+Stop the development server with **Control + C**, then run in the game folder:
+
+```sh
+git pull origin main
+npm ci
+npm run dev
+```
+
+Refresh the browser after the server restarts. If you originally downloaded a ZIP, download and extract the latest ZIP and repeat the installation steps in its new folder.
