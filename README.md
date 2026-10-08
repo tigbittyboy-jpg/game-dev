@@ -86,7 +86,7 @@ The game must be served with the command above; double-clicking `index.html` wil
 - **Experiment:** adjust Gravity and Bounciness. Bounciness applies to existing and newly spawned objects.
 - **Pause:** click Pause; click Resume to continue the simulation.
 - **Object rain:** drop a batch of mixed objects.
-- **Reset scene:** clear the objects and restore the starting arrangement. Your current world settings remain selected.
+- **Reset scene:** clear the objects and restore the empty test chamber and starting subjects. Your current world settings remain selected.
 
 ### First-person mode, characters, and weapons
 
@@ -96,13 +96,13 @@ The game must be served with the command above; double-clicking `index.html` wil
 4. **Left-click** to fire or swing. The bat works within a short distance. The pistol holds 12 rounds and the shotgun holds 6; press **R** to reload from unlimited reserve ammunition.
 5. With the grab tool equipped, aim at a nearby prop or character and click to hold it in front of you. Move or aim to drag it around, then click again to release it.
 6. Press **E** to spawn a character ahead of you, or use **Spawn person** in the toolbar. Up to 12 characters can exist at once.
-7. Characters use connected physics body parts. Weapon impacts make them collapse into ragdolls. Blood is stylized particles and floor marks; there is no dismemberment. Uncheck **Blood effects** to stop new blood effects.
+7. Characters stand in a stable idle pose until hit or grabbed, then release into adult-weight ragdolls with limited spine, neck, shoulder, elbow, hip, and knee joints. Weapon impacts make them collapse, rather than launching very light limbs. Blood is stylized particles and floor marks; there is no dismemberment. Uncheck **Blood effects** to stop new blood effects.
 8. Press **Esc** to release the mouse and access the toolbar. Click **Exit first person** to return to the orbit camera.
-9. Use **Clear people** to remove characters and their blood effects. **Reset scene** restores the starting props and characters.
+9. Use **Clear people** to remove characters and their blood effects. **Reset scene** removes spawned props and restores the four starting characters.
 
 This is a prototype: characters have simple faces and clothing, remain in place until hit or grabbed, and have no dialogue or autonomous combat AI. Weapons have basic models, recoil, firing sounds, spread, and reload timers. Movement follows the floor and obstacles, with no jumping yet.
 
-The playground starts with a block pyramid, a ramp, and assorted objects. It supports up to 180 dynamic objects.
+The scene is a clean gray gridded test chamber with four standing subjects and no preset obstacles. Spawn props only when you want them. It supports up to 180 dynamic props and 12 subjects.
 
 ### 7. Stop and restart
 
@@ -147,3 +147,7 @@ npm run dev
 ```
 
 The `/workspace` paths are specific to the cloud environment; use the macOS steps above on your Mac.
+
+## Physics validation
+
+Run `npm test` to check standing-pose stability, hit reactions at multiple body parts, joint separation, floor collisions, settling, and collisions between characters. Ragdolls use a 120 Hz physics step with 12 solver iterations. Same-character self-collisions are disabled to prevent interpenetrating limbs from producing jitter; contact with the room, props, and other characters remains enabled. The idle pose is held until activation; this is not an active walking or balance simulation.
